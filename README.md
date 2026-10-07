@@ -33,6 +33,14 @@ WHAT IT READS
 Q&A: ask about any test. Diagnosis/treatment questions are refused. Each answer shows a mode label.
 Errors: "no OPENAI_API_KEY set" -> .env missing/misnamed; 401 -> bad key; 429 -> no credit.
 
+Demo Video :
+
+
+
+https://github.com/user-attachments/assets/4f293b30-1157-4403-b779-772ba5793ed8
+
+
+
 TWO KEYS: if key 1 fails (429 no credit, 401 revoked) the app automatically uses key 2.
 STORAGE: if Oracle is not reachable, reports are saved in medtruth_local.db (SQLite) so History still works.
 429 error = that OpenAI account has no credit: add billing at platform.openai.com/settings/organization/billing
