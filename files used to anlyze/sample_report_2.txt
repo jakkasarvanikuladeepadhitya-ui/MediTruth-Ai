@@ -1,0 +1,12 @@
+Patient Name: Demo Patient
+Date: 05-10-2026
+Laboratory Report
+
+Hemoglobin: 13.2 g/dL
+Glucose: 94 mg/dL
+TSH: 4.1 mIU/L
+Cholesterol: 185 mg/dL
+Platelets: 280 10^3/uL
+WBC: 7.4 10^3/uL
+
+Note: This synthetic report is only for project testing.

@@ -1,0 +1,8 @@
+flask
+oracledb
+pypdf
+python-dotenv
+python-docx
+pypdfium2
+pillow
+# optional offline OCR (also install the Tesseract program): pytesseract

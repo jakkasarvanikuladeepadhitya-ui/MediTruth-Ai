@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MedTruth AI</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--tx:#1b2430;--mut:#5b6775;--ac:#0b6e6e;--bd:#d9e0e6}
+@media(prefers-color-scheme:dark){:root{--bg:#10161c;--card:#18212a;--tx:#e8eef3;--mut:#9aa8b5;--ac:#4cc3c3;--bd:#2b3a47}}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--tx)}
+header{background:var(--ac);color:#fff;padding:14px 20px}
+header h1{margin:0;font-size:20px}header small{opacity:.9}
+nav{display:flex;gap:4px;flex-wrap:wrap;padding:10px 20px;background:var(--card);border-bottom:1px solid var(--bd)}
+nav button{border:0;background:none;color:var(--mut);padding:8px 12px;border-radius:6px;cursor:pointer;font:inherit}
+nav button.on{background:var(--ac);color:#fff}
+main{max-width:960px;margin:18px auto;padding:0 16px}
+section{display:none;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:18px}
+section.on{display:block}
+h2{margin-top:0}
+textarea,input[type=text]{width:100%;padding:8px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:130px}
+.btn{background:var(--ac);color:#fff;border:0;padding:9px 16px;border-radius:6px;cursor:pointer;font:inherit;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+.LOW,.HIGH{font-weight:700;color:#c0392b}.NORMAL{font-weight:700;color:#1e8449}.UNKNOWN{font-weight:700;color:var(--mut)}
+.ev{color:var(--mut);font-style:italic}
+.note{background:var(--bg);border-left:4px solid var(--ac);padding:8px 12px;margin:10px 0;color:var(--mut)}
+pre{white-space:pre-wrap;background:var(--bg);padding:10px;border-radius:6px}
+.wrap{overflow-x:auto}
+.tag{font-size:12px;padding:1px 6px;border-radius:4px;background:var(--bg);border:1px solid var(--bd)}
+</style>
+</head>
+<body>
+<header><h1>MedTruth AI</h1><small>Evidence-grounded medical report assistant - research prototype</small></header>
+<nav id="nav"></nav>
+<main>
+<section id="home">
+<h2>Home &amp; Upload</h2>
+<div class="note">Research prototype, not a diagnosis or a substitute for a medical professional. Use synthetic data only.</div>
+<p>Upload a <b>PDF</b> (text or scanned), <b>image</b> (PNG/JPG/WEBP), <b>Word (.docx)</b>, or <b>text</b> file, or paste text.</p>
+<input type="file" id="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.txt,.csv,.md">
+<p style="margin:8px 0">or paste:</p>
+<textarea id="text" placeholder="Hemoglobin: 10.8 g/dL (12.0 - 17.0)&#10;Vitamin D: 18 ng/mL (30 - 100)"></textarea>
+<button class="btn" onclick="analyze()">Analyze</button>
+<button class="btn" style="background:var(--mut)" onclick="sample()">Load sample</button>
+<p id="msg"></p>
+</section>
+
+<section id="results">
+<h2>Results &amp; Evidence</h2>
+<div id="sum" class="note" style="white-space:pre-wrap;color:var(--tx)"></div>
+<p id="rinfo" class="ev">Every row shows the exact report line it came from, and whether the value was verified.</p>
+<div class="wrap"><table id="rt"><thead><tr><th>Test</th><th>Value</th><th>Range</th><th>Status</th><th>Explanation</th><th>Evidence</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section id="qa">
+<h2>Ask a question</h2>
+<p class="ev">Ask about any test in the report. Try: What is my CYFRA 21-1? / Which tests are abnormal? / Give me a summary</p>
+<input type="text" id="q" placeholder="Your question" onkeydown="if(event.key==='Enter')ask()"><button class="btn" onclick="ask()">Ask</button>
+<pre id="ans"></pre>
+</section>
+
+<section id="cmp">
+<h2>Comparison</h2>
+<p>Report 1 = the currently analyzed report. Paste Report 2 text below.</p><textarea id="text2"></textarea>
+<button class="btn" onclick="compare()">Compare</button>
+<div class="wrap"><table id="ct"></table></div>
+</section>
+
+<section id="hist">
+<h2>History (Oracle)</h2><button class="btn" onclick="history()">Refresh</button>
+<div class="wrap"><table id="ht"></table></div>
+</section>
+
+<section id="about">
+<h2>About &amp; Safety</h2>
+<p><b>How it works:</b> file reading (PDF text, scanned PDF/image via GPT vision, DOCX, TXT) &rarr; test extraction (GPT, with rule-based fallback) &rarr; range check done in code &rarr; evidence check &rarr; grounded Q&amp;A &rarr; Oracle storage.</p>
+<p><b>Safety:</b> no diagnosis or treatment advice; answers must quote the report; reference ranges come from the report when printed, otherwise generic built-in ranges (or UNKNOWN).</p>
+<div class="note">Research prototype, not a substitute for a professional.</div>
+</section>
+</main>
+<script>
+const S=[["home","Home / Upload"],["results","Results / Evidence"],["qa","Q&A"],["cmp","Comparison"],["hist","History"],["about","About / Safety"]];
+let cur="",curItems=[];const $=id=>document.getElementById(id);
+$("nav").innerHTML=S.map(s=>`<button data-s="${s[0]}">${s[1]}</button>`).join("");
+$("nav").onclick=e=>{if(e.target.dataset.s)show(e.target.dataset.s)};
+function show(id){S.forEach(s=>$(s[0]).classList.toggle("on",s[0]===id));[...$("nav").children].forEach(b=>b.classList.toggle("on",b.dataset.s===id));if(id==="hist")history()}
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const rng=i=>i.low!=null&&i.high!=null?`${i.low} - ${i.high}`:i.high!=null?`< ${i.high}`:i.low!=null?`> ${i.low}`:"not given";
+function sample(){
+$("text").value="PATIENT: Demo Person (synthetic data)\nHemoglobin: 10.8 g/dL (12.0 - 17.0)\nGlucose: 112 mg/dL (70 - 99)\nTSH: 6.2 mIU/L (0.4 - 4.0)\nVitamin D: 18 ng/mL (30 - 100)\nCholesterol: 185 mg/dL (0 - 200)\nPlatelets: 260 (150 - 450)\nWBC: 7.5 (4.0 - 11.0)";
+$("text2").value="Hemoglobin: 12.4 g/dL (12.0 - 17.0)\nGlucose: 98 mg/dL (70 - 99)\nTSH: 4.8 mIU/L (0.4 - 4.0)\nVitamin D: 26 ng/mL (30 - 100)\nCholesterol: 190 mg/dL (0 - 200)"}
+async function analyze(){
+const fd=new FormData();const f=$("file").files[0];if(f)fd.append("file",f);fd.append("text",$("text").value);
+$("msg").textContent="Analyzing... (scanned files can take ~20 seconds)";
+try{
+const r=await fetch("/api/analyze",{method:"POST",body:fd});const d=await r.json();
+if(d.error){$("msg").textContent=d.error;return}
+cur=d.text;curItems=d.items;$("sum").textContent=d.summary||"";
+$("msg").textContent=(d.warning?d.warning+" | ":"")+"Done ["+d.mode+"]"+(d.report_id?" - saved as report #"+d.report_id+" ("+d.store+")":"");
+$("rinfo").textContent=(d.report_type?d.report_type+" - ":"")+"Every row shows the exact report line it came from, and whether the value was verified.";
+$("rt").tBodies[0].innerHTML=d.items.map(i=>`<tr><td>${esc(i.test.toUpperCase())}</td><td>${i.value} ${esc(i.unit)}</td>
+<td>${rng(i)}<br><span class="tag">${i.range_source}</span></td><td class="${i.status}">${i.status}</td><td>${esc(i.explanation)}</td>
+<td class="ev">"${esc(i.evidence)}"<br><span class="tag">${i.evidence_ok?"verified":"NOT verified"}</span></td></tr>`).join("");
+show("results")}catch(e){$("msg").textContent="Server error: "+e}}
+async function post(u,b){return(await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)})).json()}
+async function ask(){if(!cur){$("ans").textContent="Analyze a report first.";return}$("ans").textContent="Thinking...";const r=await post("/api/ask",{question:$("q").value,text:cur,items:curItems});$("ans").textContent=r.answer+"\n\n[mode: "+r.mode+"]"}
+async function compare(){
+if(!cur){$("ct").innerHTML="<tr><td>Analyze report 1 first.</td></tr>";return}
+const d=await post("/api/compare",{text1:cur,text2:$("text2").value});
+$("ct").innerHTML="<tr><th>Test</th><th>Report 1</th><th>Report 2</th><th>Change</th><th>Status</th></tr>"+d.rows.map(r=>`<tr><td>${esc(r.test.toUpperCase())}</td><td>${esc(r.v1??"-")}</td><td>${esc(r.v2??"-")}</td><td>${esc(r.change)}</td><td>${esc(r.s1??"-")} &rarr; ${esc(r.s2??"-")}</td></tr>`).join("")}
+async function history(){
+const r=await fetch("/api/history");const d=await r.json();
+if(d.error){$("ht").innerHTML=`<tr><td>${esc(d.error)}</td></tr>`;return}
+$("ht").innerHTML=`<caption class="ev" style="text-align:left">Stored in: ${esc(d.store)}</caption>`+"<tr><th>ID</th><th>File</th><th>Uploaded</th><th>Tests</th><th></th></tr>"+d.rows.map(r=>`<tr><td>${r[0]}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td><td>${r[3]}</td><td><button class="btn" style="margin:0" onclick="load(${r[0]})">Load</button></td></tr>`).join("")}
+async function load(id){const d=await(await fetch("/api/report/"+id)).json();if(d.text){$("text").value=d.text;$("file").value="";show("home");analyze()}}
+show("home");
+</script>
+</body>
+</html>
