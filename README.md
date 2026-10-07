@@ -1,2 +1,2 @@
 # MediTruth-Ai
-Ai project name 
+Ai project
