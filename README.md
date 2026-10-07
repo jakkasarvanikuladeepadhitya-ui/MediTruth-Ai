@@ -20,6 +20,8 @@ FILES : app.py, index.html, medtruth_database.sql, requirements.txt, .env
    NEVER share or upload this file. Revoke any key you have shared.
 5. Run:  python app.py   then open http://127.0.0.1:5000
 <img width="1334" height="781" alt="execution of app" src="https://github.com/user-attachments/assets/efaeb03f-f83e-4fa0-a356-1c065dddd85f" />
+
+6. Open the give link : http://127.0.0.1:5000
 <img width="1919" height="915" alt="home page" src="https://github.com/user-attachments/assets/cf6c0017-ca29-42d1-a868-62a7893fe016" />
 
 
